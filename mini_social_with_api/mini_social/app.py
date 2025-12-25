@@ -574,6 +574,52 @@ def unfollow(username):
     flash("Unfollowed.")
     return redirect(url_for("profile", username=username))
 
+@app.route("/api/posts/<int:post_id>/like", methods=["POST"])
+def api_like_post(post_id: int):
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Authentication required."}), 401
+
+    now = datetime.utcnow().isoformat()
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO likes (user_id, post_id, created_at) VALUES (?, ?, ?)",
+            (user["id"], post_id, now),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass
+
+    like_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM likes WHERE post_id = ?",
+        (post_id,),
+    ).fetchone()["c"]
+    conn.close()
+
+    return jsonify({"post_id": post_id, "liked_by_me": 1, "like_count": like_count})
+
+
+@app.route("/api/posts/<int:post_id>/like", methods=["DELETE"])
+def api_unlike_post(post_id: int):
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Authentication required."}), 401
+
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM likes WHERE user_id = ? AND post_id = ?",
+        (user["id"], post_id),
+    )
+    conn.commit()
+
+    like_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM likes WHERE post_id = ?",
+        (post_id,),
+    ).fetchone()["c"]
+    conn.close()
+
+    return jsonify({"post_id": post_id, "liked_by_me": 0, "like_count": like_count})
 
 @app.route("/like/<int:post_id>", methods=["POST"])
 def like(post_id: int):
