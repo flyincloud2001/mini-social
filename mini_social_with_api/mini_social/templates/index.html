@@ -36,56 +36,42 @@
     {% endif %}
   </section>
 
-  <section class="list">
-    {% for p in posts %}
-      <article class="card post">
-        <div class="postmeta">
-          <a href="{{ url_for('profile', username=p['username']) }}">{{ p["username"] }}</a>
-          <span class="muted">{{ p["created_at"] }}</span>
-        </div>
+  <section class="list" id="posts"></section>
+  <p class="muted" id="feed-empty" style="display:none;">No posts yet.</p>
+<script>
+async function loadPosts() {
+  const feed = new URLSearchParams(window.location.search).get("feed") || "public";
+  const res = await fetch(`/api/posts?feed=${encodeURIComponent(feed)}`);
+  const data = await res.json();
 
-        <p class="postbody">{{ p["content"] }}</p>
+  const box = document.getElementById("posts");
+  const empty = document.getElementById("feed-empty");
+  box.innerHTML = "";
 
-        <div class="actions">
-          <span class="muted">{{ p["like_count"] }} likes · {{ p["comment_count"] }} comments</span>
+  if (!data.posts || data.posts.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
 
-          {% if user %}
-            {% if p["liked_by_me"] == 1 %}
-              <form action="{{ url_for('unlike', post_id=p['id']) }}" method="post" class="inline">
-                <button type="submit">Unlike</button>
-              </form>
-            {% else %}
-              <form action="{{ url_for('like', post_id=p['id']) }}" method="post" class="inline">
-                <button type="submit">Like</button>
-              </form>
-            {% endif %}
-          {% endif %}
-        </div>
+  for (const p of data.posts) {
+    const el = document.createElement("article");
+    el.className = "card post";
+    el.innerHTML = `
+      <div class="postmeta">
+        <a href="/u/${p.username}">${p.username}</a>
+        <span class="muted">${p.created_at}</span>
+      </div>
+      <p class="postbody"></p>
+      <div class="actions">
+        <span class="muted">${p.like_count} likes · ${p.comment_count} comments</span>
+      </div>
+    `;
+    el.querySelector(".postbody").innerText = p.content;
+    box.appendChild(el);
+  }
+}
+loadPosts();
+</script>
 
-        {% set clist = comments_by_post.get(p["id"], []) %}
-        <div class="comments">
-          {% for c in clist %}
-            <div class="comment">
-              <span class="commentuser">{{ c["username"] }}</span>
-              <span class="muted">{{ c["created_at"] }}</span>
-              <div class="commentbody">{{ c["content"] }}</div>
-            </div>
-          {% endfor %}
-
-          {% if user %}
-            <form action="{{ url_for('comment', post_id=p['id']) }}" method="post" class="commentform">
-              <input name="content" maxlength="300" placeholder="Write a comment" />
-              <button type="submit">Send</button>
-            </form>
-          {% endif %}
-        </div>
-      </article>
-    {% else %}
-      {% if feed == "following" %}
-        <p class="muted">No posts yet. Follow someone to see their posts here.</p>
-      {% else %}
-        <p class="muted">No posts yet.</p>
-      {% endif %}
-    {% endfor %}
-  </section>
 {% endblock %}
