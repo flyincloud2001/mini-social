@@ -78,7 +78,7 @@
           </span>
 
           ${IS_LOGGED_IN ? `
-            <button class="likebtn" data-id="${p.id}" data-liked="${p.liked_by_me}">
+            <button type="button" class="likebtn" data-id="${p.id}" data-liked="${p.liked_by_me}">
               ${p.liked_by_me ? "Unlike" : "Like"}
             </button>
           ` : ``}
@@ -92,7 +92,7 @@
   document.addEventListener("click", async (e) => {
     const btn = e.target.closest(".likebtn");
     if (!btn) return;
-
+    e.preventDefault();
     if (!IS_LOGGED_IN) {
       alert("Please log in first.");
       return;
@@ -127,5 +127,6 @@
 </script>
 
 {% endblock %}
+
 
 
