@@ -27,7 +27,6 @@
     {% endif %}
 
     {% if user %}
-      <form action="{{ url_for('create_post') }}" method="post" class="postform" id="postform">
         <textarea name="content" rows="3" maxlength="500" placeholder="Write something"></textarea>
         <button type="submit">Post</button>
       </form>
@@ -127,6 +126,7 @@
 </script>
 
 {% endblock %}
+
 
 
 
