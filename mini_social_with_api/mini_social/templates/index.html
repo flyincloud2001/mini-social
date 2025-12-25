@@ -43,78 +43,89 @@
   </section>
 
   <!-- 🔽 API 載入貼文 -->
-  <script>
-    async function loadPosts() {
-      const feed =
-        new URLSearchParams(window.location.search).get("feed") || "public";
+<script>
+  const IS_LOGGED_IN = {{ "true" if user else "false" }};
 
-      const res = await fetch(`/api/posts?feed=${encodeURIComponent(feed)}`);
-      const data = await res.json();
+  async function loadPosts() {
+    const feed = new URLSearchParams(window.location.search).get("feed") || "public";
+    const res = await fetch(`/api/posts?feed=${encodeURIComponent(feed)}`);
+    const data = await res.json();
 
-      const box = document.getElementById("posts");
-      const empty = document.getElementById("feed-empty");
-      box.innerHTML = "";
+    const box = document.getElementById("posts");
+    const empty = document.getElementById("feed-empty");
+    box.innerHTML = "";
 
-      if (!data.posts || data.posts.length === 0) {
-        empty.style.display = "block";
-        return;
-      }
-      empty.style.display = "none";
+    if (!data.posts || data.posts.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
 
-      for (const p of data.posts) {
-        const el = document.createElement("article");
-        el.className = "card post";
+    for (const p of data.posts) {
+      const el = document.createElement("article");
+      el.className = "card post";
+      el.innerHTML = `
+        <div class="postmeta">
+          <a href="/u/${p.username}">${p.username}</a>
+          <span class="muted">${p.created_at}</span>
+        </div>
 
-        el.innerHTML = `
-          <div class="postmeta">
-            <a href="/u/${p.username}">${p.username}</a>
-            <span class="muted">${p.created_at}</span>
-          </div>
+        <p class="postbody"></p>
 
-          <p class="postbody"></p>
+        <div class="actions">
+          <span class="muted">
+            <span class="likecount" data-id="${p.id}">${p.like_count}</span> likes · ${p.comment_count} comments
+          </span>
 
-          <div class="actions">
-            <span class="muted">
-              ${p.like_count} likes · ${p.comment_count} comments
-            </span>
-          </div>
-        `;
+          ${IS_LOGGED_IN ? `
+            <button class="likebtn" data-id="${p.id}" data-liked="${p.liked_by_me}">
+              ${p.liked_by_me ? "Unlike" : "Like"}
+            </button>
+          ` : ``}
+        </div>
+      `;
+      el.querySelector(".postbody").innerText = p.content;
+      box.appendChild(el);
+    }
+  }
 
-        el.querySelector(".postbody").innerText = p.content;
-        box.appendChild(el);
-      }
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".likebtn");
+    if (!btn) return;
+
+    if (!IS_LOGGED_IN) {
+      alert("Please log in first.");
+      return;
     }
 
-    loadPosts();
-    const form = document.getElementById("postform");
-    if (form) {
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const textarea = form.querySelector("textarea[name='content']");
-        const content = (textarea?.value || "").trim();
-        if (!content) return;
-  
-        const res = await fetch("/api/posts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-  
-        if (res.status === 401) {
-          alert("Please log in first.");
-          return;
-        }
-  
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.error || "Failed to post.");
-          return;
-        }
-  
-        textarea.value = "";
-        await loadPosts();
-      });
+    const postId = btn.getAttribute("data-id");
+    const liked = btn.getAttribute("data-liked") === "1";
+
+    const res = await fetch(`/api/posts/${postId}/like`, {
+      method: liked ? "DELETE" : "POST",
+    });
+
+    const data = await res.json();
+
+    if (res.status === 401) {
+      alert("Please log in first.");
+      return;
     }
-  </script>
+    if (!res.ok) {
+      alert(data.error || "Failed to update like.");
+      return;
+    }
+
+    btn.setAttribute("data-liked", data.liked_by_me ? "1" : "0");
+    btn.textContent = data.liked_by_me ? "Unlike" : "Like";
+
+    const cnt = document.querySelector(`.likecount[data-id="${postId}"]`);
+    if (cnt) cnt.textContent = String(data.like_count);
+  });
+
+  loadPosts();
+</script>
+
 {% endblock %}
+
 
