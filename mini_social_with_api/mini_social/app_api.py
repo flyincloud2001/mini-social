@@ -312,6 +312,42 @@ def fetch_posts_api(feed: str, viewer_id: int | None, limit: int, before_id: int
     conn.close()
     return posts
 
+def fetch_comments_for_posts(post_ids: list[int], limit_per_post: int = 50):
+    if not post_ids:
+        return {}
+
+    conn = get_db()
+    placeholders = ",".join(["?"] * len(post_ids))
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            comments.post_id,
+            comments.content,
+            comments.created_at,
+            users.username
+        FROM comments
+        JOIN users ON users.id = comments.user_id
+        WHERE comments.post_id IN ({placeholders})
+        ORDER BY comments.created_at ASC
+        """,
+        post_ids,
+    ).fetchall()
+
+    conn.close()
+
+    out: dict[int, list[dict]] = {}
+    for r in rows:
+        d = dict(r)
+        d["created_at"] = format_time(d.get("created_at", ""))
+        out.setdefault(d["post_id"], []).append(d)
+
+    if limit_per_post is not None:
+        for pid in list(out.keys()):
+            out[pid] = out[pid][-limit_per_post:]
+
+    return out
+
 
 
 @app.before_request
@@ -353,8 +389,15 @@ def api_get_posts():
     before_id = _parse_int(request.args.get("before_id"), default=None)
 
     posts = fetch_posts_api(feed=feed, viewer_id=viewer_id, limit=limit, before_id=before_id)
-    next_cursor = posts[-1]["id"] if len(posts) == limit and posts else None
 
+    post_ids = [p["id"] for p in posts]
+    comments_map = fetch_comments_for_posts(post_ids, limit_per_post=20)
+    
+    for p in posts:
+        p["comments"] = comments_map.get(p["id"], [])
+    
+    next_cursor = posts[-1]["id"] if len(posts) == limit and posts else None
+    
     return jsonify(
         {
             "feed": feed,
@@ -362,8 +405,10 @@ def api_get_posts():
             "before_id": before_id,
             "next_cursor": next_cursor,
             "posts": posts,
+            "user": user,
         }
     )
+
 
 
 @app.route("/register", methods=["GET", "POST"])
