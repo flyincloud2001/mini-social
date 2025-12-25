@@ -37,7 +37,9 @@
         <p class="postbody">{{ p["content"] }}</p>
 
         <div class="actions">
-          <span class="muted">{{ p["like_count"] }} likes · {{ p["comment_count"] }} comments</span>
+          <span class="muted">
+            <span class="likecount" data-id="{{ p['id'] }}">{{ p["like_count"] }}</span> likes · {{ p["comment_count"] }} comments
+          </span>
 
           {% if user %}
             <button
@@ -46,11 +48,7 @@
               data-id="{{ p['id'] }}"
               data-liked="{{ p['liked_by_me'] }}"
             >
-              {% if p["liked_by_me"] == 1 %}
-                Unlike
-              {% else %}
-                Like
-              {% endif %}
+              {% if p["liked_by_me"] == 1 %}Unlike{% else %}Like{% endif %}
             </button>
           {% else %}
             <span class="muted">Log in to like</span>
@@ -81,4 +79,43 @@
       <p class="muted">No posts yet.</p>
     {% endfor %}
   </section>
+
+  <script>
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".likebtn");
+      if (!btn) return;
+
+      e.preventDefault();
+
+      const postId = btn.dataset.id;
+      const liked = btn.dataset.liked === "1";
+
+      try {
+        const endpoint = liked ? `/api/unlike/${postId}` : `/api/like/${postId}`;
+        const res = await fetch(endpoint, { method: "POST" });
+
+        if (!res.ok) {
+          console.error("Like API failed:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+
+        const likeSpan = document.querySelector(`.likecount[data-id="${postId}"]`);
+        if (likeSpan && typeof data.like_count !== "undefined") {
+          likeSpan.textContent = data.like_count;
+        }
+
+        if (typeof data.liked_by_me !== "undefined") {
+          btn.dataset.liked = String(data.liked_by_me);
+          btn.textContent = data.liked_by_me == 1 ? "Unlike" : "Like";
+        } else {
+          btn.dataset.liked = liked ? "0" : "1";
+          btn.textContent = liked ? "Like" : "Unlike";
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  </script>
 {% endblock %}
