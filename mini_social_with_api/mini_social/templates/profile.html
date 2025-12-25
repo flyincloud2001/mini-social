@@ -175,7 +175,7 @@
           box.insertBefore(wrap, form);
         }
 
-        const cnt = document.querySelector(\`.commentcount[data-id="\${postId}"]\`);
+        const cnt = document.querySelector(`.commentcount[data-id="${postId}"]`);
         if (cnt) cnt.textContent = String(data.comment_count);
       } catch (err) {
         console.error(err);
