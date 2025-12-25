@@ -407,6 +407,54 @@ def api_unlike_post(post_id: int):
 
     return jsonify({"post_id": post_id, "liked_by_me": 0, "like_count": like_count})
 
+@app.route("/api/posts/<int:post_id>/comments", methods=["POST"])
+def api_create_comment(post_id: int):
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Authentication required."}), 401
+
+    data = request.get_json(silent=True) or {}
+    content = (data.get("content") or "").strip()
+
+    if not content:
+        return jsonify({"error": "Comment cannot be empty."}), 400
+
+    if len(content) > 300:
+        return jsonify({"error": "Comment is too long. Limit is 300 characters."}), 400
+
+    now = datetime.utcnow().isoformat()
+
+    conn = get_db()
+
+    post_row = conn.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
+    if not post_row:
+        conn.close()
+        return jsonify({"error": "Post not found."}), 404
+
+    conn.execute(
+        "INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)",
+        (post_id, user["id"], content, now),
+    )
+    conn.commit()
+
+    comment_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM comments WHERE post_id = ?",
+        (post_id,),
+    ).fetchone()["c"]
+
+    conn.close()
+
+    return jsonify(
+        {
+            "comment_count": comment_count,
+            "comment": {
+                "post_id": post_id,
+                "username": user["username"],
+                "content": content,
+                "created_at": format_time(now),
+            },
+        }
+    ), 200
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
