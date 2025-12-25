@@ -67,10 +67,10 @@
           {% endfor %}
 
           {% if user %}
-            <form action="#" method="post" class="commentform" data-id="{{ p['id'] }}">
+            <div class="commentform" data-id="{{ p['id'] }}">
               <input type="text" name="content" placeholder="Write a comment" required />
-              <button type="submit">Post</button>
-            </form>
+              <button type="button" class="commentpostbtn" data-id="{{ p['id'] }}">Post</button>
+            </div>
           {% endif %}
         </div>
       </article>
@@ -81,65 +81,72 @@
 
   <script>
     document.addEventListener("click", async (e) => {
-      const btn = e.target.closest(".likebtn");
-      if (!btn) return;
+      const likeBtn = e.target.closest(".likebtn");
+      if (likeBtn) {
+        e.preventDefault();
 
-      e.preventDefault();
+        const postId = likeBtn.dataset.id;
+        const liked = likeBtn.dataset.liked === "1";
 
-      const postId = btn.dataset.id;
-      const liked = btn.dataset.liked === "1";
-
-      try {
-        const res = await fetch(`/api/posts/${postId}/like`, {
-          method: liked ? "DELETE" : "POST",
-        });
-
-        let data = {};
         try {
-          data = await res.json();
-        } catch (_) {
-          data = {};
+          const res = await fetch(`/api/posts/${postId}/like`, {
+            method: liked ? "DELETE" : "POST",
+          });
+
+          let data = {};
+          try {
+            data = await res.json();
+          } catch (_) {
+            data = {};
+          }
+
+          if (res.status === 401) {
+            alert("Please log in first.");
+            return;
+          }
+
+          if (!res.ok) {
+            alert(data.error || "Failed to update like.");
+            return;
+          }
+
+          const likeSpan = document.querySelector(`.likecount[data-id="${postId}"]`);
+          if (likeSpan && typeof data.like_count !== "undefined") {
+            likeSpan.textContent = String(data.like_count);
+          }
+
+          if (typeof data.liked_by_me !== "undefined") {
+            likeBtn.dataset.liked = String(data.liked_by_me);
+            likeBtn.textContent = data.liked_by_me == 1 ? "Unlike" : "Like";
+          } else {
+            likeBtn.dataset.liked = liked ? "0" : "1";
+            likeBtn.textContent = liked ? "Like" : "Unlike";
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Network error.");
         }
 
-        if (res.status === 401) {
-          alert("Please log in first.");
-          return;
-        }
-
-        if (!res.ok) {
-          console.error("Like API failed:", res.status, data);
-          alert(data.error || "Failed to update like.");
-          return;
-        }
-
-        const likeSpan = document.querySelector(`.likecount[data-id="${postId}"]`);
-        if (likeSpan && typeof data.like_count !== "undefined") {
-          likeSpan.textContent = String(data.like_count);
-        }
-
-        if (typeof data.liked_by_me !== "undefined") {
-          btn.dataset.liked = String(data.liked_by_me);
-          btn.textContent = data.liked_by_me == 1 ? "Unlike" : "Like";
-        } else {
-          btn.dataset.liked = liked ? "0" : "1";
-          btn.textContent = liked ? "Like" : "Unlike";
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Network error.");
+        return;
       }
-    });
 
-    document.addEventListener("submit", async (e) => {
-      const form = e.target.closest(".commentform");
-      if (!form) return;
+      const cbtn = e.target.closest(".commentpostbtn");
+      if (!cbtn) return;
 
       e.preventDefault();
 
-      const postId = form.dataset.id;
-      const input = form.querySelector("input[name='content']");
+      const postId = cbtn.dataset.id;
+      const box = document.querySelector(`.comments[data-post-id="${postId}"]`);
+      if (!box) return;
+
+      const formBox = box.querySelector(`.commentform[data-id="${postId}"]`);
+      if (!formBox) return;
+
+      const input = formBox.querySelector(`input[name="content"]`);
       const content = (input.value || "").trim();
       if (!content) return;
+
+      cbtn.disabled = true;
 
       try {
         const res = await fetch(`/api/posts/${postId}/comments`, {
@@ -162,24 +169,26 @@
 
         input.value = "";
 
-        const box = document.querySelector(`.comments[data-post-id="${postId}"]`);
-        if (box) {
-          const wrap = document.createElement("div");
-          wrap.className = "comment";
-          wrap.innerHTML = `
-            <span class="commentuser">${data.comment.username}</span>
-            <span class="muted">${data.comment.created_at}</span>
-            <div class="commentbody"></div>
-          `;
-          wrap.querySelector(".commentbody").innerText = data.comment.content;
-          box.insertBefore(wrap, form);
-        }
+        const wrap = document.createElement("div");
+        wrap.className = "comment";
+        wrap.innerHTML = `
+          <span class="commentuser"></span>
+          <span class="muted"></span>
+          <div class="commentbody"></div>
+        `;
+        wrap.querySelector(".commentuser").textContent = data.comment.username;
+        wrap.querySelector(".muted").textContent = data.comment.created_at;
+        wrap.querySelector(".commentbody").textContent = data.comment.content;
+
+        box.insertBefore(wrap, formBox);
 
         const cnt = document.querySelector(`.commentcount[data-id="${postId}"]`);
         if (cnt) cnt.textContent = String(data.comment_count);
       } catch (err) {
         console.error(err);
         alert("Network error.");
+      } finally {
+        cbtn.disabled = false;
       }
     });
   </script>
