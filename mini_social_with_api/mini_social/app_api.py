@@ -607,6 +607,45 @@ def unlike(post_id: int):
 
     return redirect(request.referrer or url_for("index"))
 
+@app.route("/api/posts/<int:post_id>/comments", methods=["POST"])
+def api_create_comment(post_id: int):
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Authentication required."}), 401
+
+    data = request.get_json(silent=True) or {}
+    content = (data.get("content") or "").strip()
+    if not content:
+        return jsonify({"error": "Content is required."}), 400
+
+    now = datetime.utcnow().isoformat()
+
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO comments (user_id, post_id, content, created_at) VALUES (?, ?, ?, ?)",
+        (user["id"], post_id, content, now),
+    )
+    conn.commit()
+
+    comment_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM comments WHERE post_id = ?",
+        (post_id,),
+    ).fetchone()["c"]
+
+    conn.close()
+
+    return jsonify(
+        {
+            "post_id": post_id,
+            "comment_count": comment_count,
+            "comment": {
+                "username": user["username"],
+                "created_at": format_time(now),
+                "content": content,
+            },
+        }
+    )
+
 
 @app.route("/comment/<int:post_id>", methods=["POST"])
 def comment(post_id: int):
