@@ -67,11 +67,9 @@
 
           {% if user %}
             <form action="{{ url_for('comment', post_id=p['id']) }}" method="post" class="commentform">
-              <input name="content" maxlength="300" placeholder="Write a comment" />
-              <button type="submit">Send</button>
+              <input type="text" name="content" placeholder="Write a comment" required />
+              <button type="submit">Post</button>
             </form>
-          {% else %}
-            <div class="muted">Log in to comment</div>
           {% endif %}
         </div>
       </article>
@@ -91,19 +89,31 @@
       const liked = btn.dataset.liked === "1";
 
       try {
-        const endpoint = liked ? `/api/unlike/${postId}` : `/api/like/${postId}`;
-        const res = await fetch(endpoint, { method: "POST" });
+        const res = await fetch(`/api/posts/${postId}/like`, {
+          method: liked ? "DELETE" : "POST",
+        });
 
-        if (!res.ok) {
-          console.error("Like API failed:", res.status);
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (_) {
+          data = {};
+        }
+
+        if (res.status === 401) {
+          alert("Please log in first.");
           return;
         }
 
-        const data = await res.json();
+        if (!res.ok) {
+          console.error("Like API failed:", res.status, data);
+          alert(data.error || "Failed to update like.");
+          return;
+        }
 
         const likeSpan = document.querySelector(`.likecount[data-id="${postId}"]`);
         if (likeSpan && typeof data.like_count !== "undefined") {
-          likeSpan.textContent = data.like_count;
+          likeSpan.textContent = String(data.like_count);
         }
 
         if (typeof data.liked_by_me !== "undefined") {
@@ -115,6 +125,7 @@
         }
       } catch (err) {
         console.error(err);
+        alert("Network error.");
       }
     });
   </script>
