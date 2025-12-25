@@ -365,6 +365,56 @@ def api_get_posts():
         }
     )
 
+@app.route("/api/posts", methods=["POST"])
+def api_create_post():
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Authentication required."}), 401
+
+    # 支援 JSON 與表單兩種
+    payload = request.get_json(silent=True) or {}
+    content = (payload.get("content") or request.form.get("content") or "").strip()
+
+    if not content:
+        return jsonify({"error": "Post cannot be empty."}), 400
+    if len(content) > 500:
+        return jsonify({"error": "Post is too long. Limit is 500 characters."}), 400
+
+    now = datetime.utcnow().isoformat()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO posts (user_id, content, created_at) VALUES (?, ?, ?)",
+        (user["id"], content, now),
+    )
+    post_id = cur.lastrowid
+    conn.commit()
+
+    row = conn.execute(
+        """
+        SELECT
+            posts.id,
+            posts.content,
+            posts.created_at,
+            users.username,
+            0 AS like_count,
+            0 AS comment_count,
+            0 AS liked_by_me
+        FROM posts
+        JOIN users ON users.id = posts.user_id
+        WHERE posts.id = ?
+        """,
+        (post_id,),
+    ).fetchone()
+
+    conn.close()
+
+    post = dict(row)
+    post["created_at"] = format_time(post.get("created_at", ""))
+
+    return jsonify({"post": post}), 201
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
