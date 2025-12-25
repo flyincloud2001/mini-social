@@ -38,7 +38,8 @@
 
         <div class="actions">
           <span class="muted">
-            <span class="likecount" data-id="{{ p['id'] }}">{{ p["like_count"] }}</span> likes · {{ p["comment_count"] }} comments
+            <span class="likecount" data-id="{{ p['id'] }}">{{ p["like_count"] }}</span> likes ·
+            <span class="commentcount" data-id="{{ p['id'] }}">{{ p["comment_count"] }}</span> comments
           </span>
 
           {% if user %}
@@ -56,7 +57,7 @@
         </div>
 
         {% set clist = comments_by_post.get(p["id"], []) %}
-        <div class="comments">
+        <div class="comments" data-post-id="{{ p['id'] }}">
           {% for c in clist %}
             <div class="comment">
               <span class="commentuser">{{ c["username"] }}</span>
@@ -66,7 +67,7 @@
           {% endfor %}
 
           {% if user %}
-            <form action="{{ url_for('comment', post_id=p['id']) }}" method="post" class="commentform">
+            <form action="#" method="post" class="commentform" data-id="{{ p['id'] }}">
               <input type="text" name="content" placeholder="Write a comment" required />
               <button type="submit">Post</button>
             </form>
@@ -123,6 +124,59 @@
           btn.dataset.liked = liked ? "0" : "1";
           btn.textContent = liked ? "Like" : "Unlike";
         }
+      } catch (err) {
+        console.error(err);
+        alert("Network error.");
+      }
+    });
+
+    document.addEventListener("submit", async (e) => {
+      const form = e.target.closest(".commentform");
+      if (!form) return;
+
+      e.preventDefault();
+
+      const postId = form.dataset.id;
+      const input = form.querySelector("input[name='content']");
+      const content = (input.value || "").trim();
+      if (!content) return;
+
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+
+        const data = await res.json();
+
+        if (res.status === 401) {
+          alert("Please log in first.");
+          return;
+        }
+
+        if (!res.ok) {
+          alert(data.error || "Failed to create comment.");
+          return;
+        }
+
+        input.value = "";
+
+        const box = document.querySelector(`.comments[data-post-id="${postId}"]`);
+        if (box) {
+          const wrap = document.createElement("div");
+          wrap.className = "comment";
+          wrap.innerHTML = `
+            <span class="commentuser">${data.comment.username}</span>
+            <span class="muted">${data.comment.created_at}</span>
+            <div class="commentbody"></div>
+          `;
+          wrap.querySelector(".commentbody").innerText = data.comment.content;
+          box.insertBefore(wrap, form);
+        }
+
+        const cnt = document.querySelector(\`.commentcount[data-id="\${postId}"]\`);
+        if (cnt) cnt.textContent = String(data.comment_count);
       } catch (err) {
         console.error(err);
         alert("Network error.");
