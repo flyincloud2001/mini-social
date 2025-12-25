@@ -40,15 +40,18 @@
           <span class="muted">{{ p["like_count"] }} likes · {{ p["comment_count"] }} comments</span>
 
           {% if user %}
-            {% if p["liked_by_me"] == 1 %}
-              <form action="{{ url_for('unlike', post_id=p['id']) }}" method="post" class="inline">
-                <button type="submit">Unlike</button>
-              </form>
-            {% else %}
-              <form action="{{ url_for('like', post_id=p['id']) }}" method="post" class="inline">
-                <button type="submit">Like</button>
-              </form>
-            {% endif %}
+            <button
+              type="button"
+              class="likebtn"
+              data-id="{{ p['id'] }}"
+              data-liked="{{ p['liked_by_me'] }}"
+            >
+              {% if p["liked_by_me"] == 1 %}
+                Unlike
+              {% else %}
+                Like
+              {% endif %}
+            </button>
           {% else %}
             <span class="muted">Log in to like</span>
           {% endif %}
