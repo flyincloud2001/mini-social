@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+{% set title = profile_user["username"] %}
+
+{% block content %}
+  <section class="card">
+    <div class="profilehead">
+      <div>
+        <h1>{{ profile_user["username"] }}</h1>
+        <p class="muted">
+          Followers {{ followers_count }}
+          Following {{ following_count }}
+        </p>
+      </div>
+
+      {% if user and user["id"] != profile_user["id"] %}
+        {% if is_following %}
+          <form action="{{ url_for('unfollow', username=profile_user['username']) }}" method="post" class="inline">
+            <button type="submit">Unfollow</button>
+          </form>
+        {% else %}
+          <form action="{{ url_for('follow', username=profile_user['username']) }}" method="post" class="inline">
+            <button type="submit">Follow</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="list">
+    {% for p in posts %}
+      <article class="card post">
+        <div class="postmeta">
+          <a href="{{ url_for('profile', username=p['username']) }}">{{ p["username"] }}</a>
+          <span class="muted">{{ p["created_at"] }}</span>
+        </div>
+
+        <p class="postbody">{{ p["content"] }}</p>
+
+        <div class="actions">
+          <span class="muted">{{ p["like_count"] }} likes · {{ p["comment_count"] }} comments</span>
+
+          {% if user %}
+            {% if p["liked_by_me"] == 1 %}
+              <form action="{{ url_for('unlike', post_id=p['id']) }}" method="post" class="inline">
+                <button type="submit">Unlike</button>
+              </form>
+            {% else %}
+              <form action="{{ url_for('like', post_id=p['id']) }}" method="post" class="inline">
+                <button type="submit">Like</button>
+              </form>
+            {% endif %}
+          {% else %}
+            <span class="muted">Log in to like</span>
+          {% endif %}
+        </div>
+
+        {% set clist = comments_by_post.get(p["id"], []) %}
+        <div class="comments">
+          {% for c in clist %}
+            <div class="comment">
+              <span class="commentuser">{{ c["username"] }}</span>
+              <span class="muted">{{ c["created_at"] }}</span>
+              <div class="commentbody">{{ c["content"] }}</div>
+            </div>
+          {% endfor %}
+
+          {% if user %}
+            <form action="{{ url_for('comment', post_id=p['id']) }}" method="post" class="commentform">
+              <input name="content" maxlength="300" placeholder="Write a comment" />
+              <button type="submit">Send</button>
+            </form>
+          {% else %}
+            <div class="muted">Log in to comment</div>
+          {% endif %}
+        </div>
+      </article>
+    {% else %}
+      <p class="muted">No posts yet.</p>
+    {% endfor %}
+  </section>
+{% endblock %}

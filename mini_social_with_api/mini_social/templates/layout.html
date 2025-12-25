@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "Mini Social" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="container header">
+    <a class="brand" href="{{ url_for('index') }}">Mini Social</a>
+
+    <nav class="nav">
+      {% if user %}
+        <span class="muted">Signed in as</span>
+        <a href="{{ url_for('profile', username=user['username']) }}">{{ user["username"] }}</a>
+        <form action="{{ url_for('logout') }}" method="post" class="inline">
+          <button class="linkbtn" type="submit">Log out</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('register') }}">Register</a>
+        <a href="{{ url_for('login') }}">Log in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flashwrap">
+          {% for msg in messages %}
+            <div class="flash">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% set title = "Home" %}
+
+{% block content %}
+  <section class="card">
+    <div class="feedhead">
+      <h1>
+        {% if feed == "following" %}
+          Following Feed
+        {% else %}
+          Public Feed
+        {% endif %}
+      </h1>
+
+      <div class="feedtabs">
+        <a class="{% if feed != 'following' %}active{% endif %}" href="{{ url_for('index', feed='public') }}">Public</a>
+        {% if user %}
+          <a class="{% if feed == 'following' %}active{% endif %}" href="{{ url_for('index', feed='following') }}">Following</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if feed == "following" %}
+      <p class="muted">Only posts from people you follow, plus your own.</p>
+    {% else %}
+      <p class="muted">Everyone can see all posts.</p>
+    {% endif %}
+
+    {% if user %}
+      <form action="{{ url_for('create_post') }}" method="post" class="postform">
+        <textarea name="content" rows="3" maxlength="500" placeholder="Write something"></textarea>
+        <button type="submit">Post</button>
+      </form>
+    {% else %}
+      <p class="muted">Log in to post, like, and comment.</p>
+    {% endif %}
+  </section>
+
+  <section class="list">
+    {% for p in posts %}
+      <article class="card post">
+        <div class="postmeta">
+          <a href="{{ url_for('profile', username=p['username']) }}">{{ p["username"] }}</a>
+          <span class="muted">{{ p["created_at"] }}</span>
+        </div>
+
+        <p class="postbody">{{ p["content"] }}</p>
+
+        <div class="actions">
+          <span class="muted">{{ p["like_count"] }} likes · {{ p["comment_count"] }} comments</span>
+
+          {% if user %}
+            {% if p["liked_by_me"] == 1 %}
+              <form action="{{ url_for('unlike', post_id=p['id']) }}" method="post" class="inline">
+                <button type="submit">Unlike</button>
+              </form>
+            {% else %}
+              <form action="{{ url_for('like', post_id=p['id']) }}" method="post" class="inline">
+                <button type="submit">Like</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        {% set clist = comments_by_post.get(p["id"], []) %}
+        <div class="comments">
+          {% for c in clist %}
+            <div class="comment">
+              <span class="commentuser">{{ c["username"] }}</span>
+              <span class="muted">{{ c["created_at"] }}</span>
+              <div class="commentbody">{{ c["content"] }}</div>
+            </div>
+          {% endfor %}
+
+          {% if user %}
+            <form action="{{ url_for('comment', post_id=p['id']) }}" method="post" class="commentform">
+              <input name="content" maxlength="300" placeholder="Write a comment" />
+              <button type="submit">Send</button>
+            </form>
+          {% endif %}
+        </div>
+      </article>
+    {% else %}
+      {% if feed == "following" %}
+        <p class="muted">No posts yet. Follow someone to see their posts here.</p>
+      {% else %}
+        <p class="muted">No posts yet.</p>
+      {% endif %}
+    {% endfor %}
+  </section>
+{% endblock %}
