@@ -36,42 +36,55 @@
     {% endif %}
   </section>
 
-  <section class="list" id="posts"></section>
-  <p class="muted" id="feed-empty" style="display:none;">No posts yet.</p>
-<script>
-async function loadPosts() {
-  const feed = new URLSearchParams(window.location.search).get("feed") || "public";
-  const res = await fetch(`/api/posts?feed=${encodeURIComponent(feed)}`);
-  const data = await res.json();
+  <!-- 🔽 API 貼文容器 -->
+  <section class="list">
+    <div id="posts"></div>
+    <p class="muted" id="feed-empty" style="display:none;">No posts yet.</p>
+  </section>
 
-  const box = document.getElementById("posts");
-  const empty = document.getElementById("feed-empty");
-  box.innerHTML = "";
+  <!-- 🔽 API 載入貼文 -->
+  <script>
+    async function loadPosts() {
+      const feed =
+        new URLSearchParams(window.location.search).get("feed") || "public";
 
-  if (!data.posts || data.posts.length === 0) {
-    empty.style.display = "block";
-    return;
-  }
-  empty.style.display = "none";
+      const res = await fetch(`/api/posts?feed=${encodeURIComponent(feed)}`);
+      const data = await res.json();
 
-  for (const p of data.posts) {
-    const el = document.createElement("article");
-    el.className = "card post";
-    el.innerHTML = `
-      <div class="postmeta">
-        <a href="/u/${p.username}">${p.username}</a>
-        <span class="muted">${p.created_at}</span>
-      </div>
-      <p class="postbody"></p>
-      <div class="actions">
-        <span class="muted">${p.like_count} likes · ${p.comment_count} comments</span>
-      </div>
-    `;
-    el.querySelector(".postbody").innerText = p.content;
-    box.appendChild(el);
-  }
-}
-loadPosts();
-</script>
+      const box = document.getElementById("posts");
+      const empty = document.getElementById("feed-empty");
+      box.innerHTML = "";
 
+      if (!data.posts || data.posts.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      for (const p of data.posts) {
+        const el = document.createElement("article");
+        el.className = "card post";
+
+        el.innerHTML = `
+          <div class="postmeta">
+            <a href="/u/${p.username}">${p.username}</a>
+            <span class="muted">${p.created_at}</span>
+          </div>
+
+          <p class="postbody"></p>
+
+          <div class="actions">
+            <span class="muted">
+              ${p.like_count} likes · ${p.comment_count} comments
+            </span>
+          </div>
+        `;
+
+        el.querySelector(".postbody").innerText = p.content;
+        box.appendChild(el);
+      }
+    }
+
+    loadPosts();
+  </script>
 {% endblock %}
