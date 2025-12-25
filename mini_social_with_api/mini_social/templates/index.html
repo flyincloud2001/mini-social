@@ -27,7 +27,7 @@
     {% endif %}
 
     {% if user %}
-      <form action="{{ url_for('create_post') }}" method="post" class="postform">
+      <form action="{{ url_for('create_post') }}" method="post" class="postform" id="postform">
         <textarea name="content" rows="3" maxlength="500" placeholder="Write something"></textarea>
         <button type="submit">Post</button>
       </form>
@@ -86,5 +86,35 @@
     }
 
     loadPosts();
+    const form = document.getElementById("postform");
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const textarea = form.querySelector("textarea[name='content']");
+        const content = (textarea?.value || "").trim();
+        if (!content) return;
+  
+        const res = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+  
+        if (res.status === 401) {
+          alert("Please log in first.");
+          return;
+        }
+  
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Failed to post.");
+          return;
+        }
+  
+        textarea.value = "";
+        await loadPosts();
+      });
+    }
   </script>
 {% endblock %}
+
