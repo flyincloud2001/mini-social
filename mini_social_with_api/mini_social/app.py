@@ -189,10 +189,26 @@ def current_user():
     uid = session.get("user_id")
     if not uid:
         return None
-    conn = get_db()
-    u = conn.execute("SELECT id, username FROM users WHERE id = ?", (uid,)).fetchone()
-    conn.close()
-    return dict(u) if u else None
+
+    db = get_db()
+    try:
+        # Render: SQLAlchemy Session
+        if hasattr(db, "bind"):
+            row = db.execute(
+                text("SELECT id, username FROM users WHERE id = :uid"),
+                {"uid": uid},
+            ).fetchone()
+            return dict(row._mapping) if row else None
+
+        # Local: sqlite3
+        row = db.execute(
+            "SELECT id, username FROM users WHERE id = ?",
+            (uid,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        db_close(db)
+
 
 
 def format_time(iso_str: str) -> str:
