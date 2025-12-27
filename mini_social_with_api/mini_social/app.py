@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
+import os
 import sqlite3
+from sqlalchemy import text
+from mini_social_with_api.mini_social.db_sa import SessionLocal
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -23,6 +26,12 @@ print("DB absolute path =", os.path.abspath(DB_PATH))
 
 
 def get_db():
+    """
+    本機沒有 DATABASE_URL：回 sqlite3 connection（原樣）
+    Render 有 DATABASE_URL：回 SQLAlchemy Session（Postgres）
+    """
+    if os.environ.get("DATABASE_URL"):
+        return SessionLocal()  # SQLAlchemy session
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
