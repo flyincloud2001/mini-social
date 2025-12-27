@@ -447,20 +447,20 @@ def api_create_comment(post_id: int):
 
     db = SessionLocal()
     try:
-        # 確認 post 存在
         row = db.execute(
-            "SELECT id FROM posts WHERE id = :pid",
+            text("SELECT id FROM posts WHERE id = :pid"),
             {"pid": post_id},
         ).fetchone()
         if not row:
             return jsonify({"error": "Post not found."}), 404
 
-        # 寫入 comment
         db.execute(
-            """
-            INSERT INTO comments (user_id, post_id, content, created_at)
-            VALUES (:uid, :pid, :content, :created_at)
-            """,
+            text(
+                """
+                INSERT INTO comments (user_id, post_id, content, created_at)
+                VALUES (:uid, :pid, :content, :created_at)
+                """
+            ),
             {
                 "uid": user["id"],
                 "pid": post_id,
@@ -470,11 +470,10 @@ def api_create_comment(post_id: int):
         )
         db.commit()
 
-        # 重新算 comment_count
         count = db.execute(
-            "SELECT COUNT(*) FROM comments WHERE post_id = :pid",
+            text("SELECT COUNT(*) FROM comments WHERE post_id = :pid"),
             {"pid": post_id},
-        ).scalar()
+        ).scalar_one()
 
     finally:
         db.close()
@@ -490,6 +489,7 @@ def api_create_comment(post_id: int):
             },
         }
     )
+
 
 
 @app.route("/register", methods=["GET", "POST"])
