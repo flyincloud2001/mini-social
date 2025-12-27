@@ -410,6 +410,8 @@ def api_unlike_post(post_id: int):
 
     return jsonify({"post_id": post_id, "liked_by_me": 0, "like_count": like_count})
 
+from db_sa import SessionLocal
+
 @app.route("/api/posts/<int:post_id>/comments", methods=["POST"])
 def api_create_comment(post_id: int):
     user = current_user()
@@ -418,46 +420,57 @@ def api_create_comment(post_id: int):
 
     data = request.get_json(silent=True) or {}
     content = (data.get("content") or "").strip()
-
     if not content:
-        return jsonify({"error": "Comment cannot be empty."}), 400
-
-    if len(content) > 300:
-        return jsonify({"error": "Comment is too long. Limit is 300 characters."}), 400
+        return jsonify({"error": "Content is required."}), 400
 
     now = datetime.utcnow().isoformat()
 
-    conn = get_db()
+    db = SessionLocal()
+    try:
+        # 確認 post 存在
+        row = db.execute(
+            "SELECT id FROM posts WHERE id = :pid",
+            {"pid": post_id},
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Post not found."}), 404
 
-    post_row = conn.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
-    if not post_row:
-        conn.close()
-        return jsonify({"error": "Post not found."}), 404
+        # 寫入 comment
+        db.execute(
+            """
+            INSERT INTO comments (user_id, post_id, content, created_at)
+            VALUES (:uid, :pid, :content, :created_at)
+            """,
+            {
+                "uid": user["id"],
+                "pid": post_id,
+                "content": content,
+                "created_at": now,
+            },
+        )
+        db.commit()
 
-    conn.execute(
-        "INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)",
-        (post_id, user["id"], content, now),
-    )
-    conn.commit()
+        # 重新算 comment_count
+        count = db.execute(
+            "SELECT COUNT(*) FROM comments WHERE post_id = :pid",
+            {"pid": post_id},
+        ).scalar()
 
-    comment_count = conn.execute(
-        "SELECT COUNT(*) AS c FROM comments WHERE post_id = ?",
-        (post_id,),
-    ).fetchone()["c"]
-
-    conn.close()
+    finally:
+        db.close()
 
     return jsonify(
         {
-            "comment_count": comment_count,
+            "post_id": post_id,
+            "comment_count": count,
             "comment": {
-                "post_id": post_id,
                 "username": user["username"],
-                "content": content,
                 "created_at": format_time(now),
+                "content": content,
             },
         }
-    ), 200
+    )
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
