@@ -38,9 +38,14 @@ def get_db():
 
 def db_execute(db, sql, params=None):
     params = params or {}
-    if hasattr(db, "execute") and "sqlalchemy" in str(type(db)).lower():
+
+    # SQLAlchemy Session: 用 text + named params
+    if hasattr(db, "bind"):  # Session 會有 bind
         return db.execute(text(sql), params)
-    return db.execute(sql, params)
+
+    # sqlite3: 把 named params 轉成 tuple 不做，直接要求呼叫端用 ?
+    return db.execute(sql, params if params else ())
+
 
 def db_close(db):
     try:
@@ -274,7 +279,8 @@ def index():
     for p in posts:
         p["created_at"] = format_time(p.get("created_at", ""))
 
-    comments_rows = conn.execute(
+    cur = db_execute(
+        conn,
         """
         SELECT
             c.post_id,
@@ -285,7 +291,9 @@ def index():
         JOIN users u ON u.id = c.user_id
         ORDER BY c.created_at ASC
         """
-    ).fetchall()
+    )
+    comments_rows = cur.fetchall()
+
 
     comments_by_post = {}
     for r in comments_rows:
