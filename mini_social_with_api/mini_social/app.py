@@ -431,7 +431,6 @@ def api_unlike_post(post_id: int):
 
     return jsonify({"post_id": post_id, "liked_by_me": 0, "like_count": like_count})
 
-from db_sa import SessionLocal
 
 @app.route("/api/posts/<int:post_id>/comments", methods=["POST"])
 def api_create_comment(post_id: int):
