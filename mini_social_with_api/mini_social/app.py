@@ -36,6 +36,18 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def db_execute(db, sql, params=None):
+    params = params or {}
+    if hasattr(db, "execute") and "sqlalchemy" in str(type(db)).lower():
+        return db.execute(text(sql), params)
+    return db.execute(sql, params)
+
+def db_close(db):
+    try:
+        db.close()
+    except Exception:
+        pass
+
 
 def init_db():
     conn = get_db()
