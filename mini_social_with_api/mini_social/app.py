@@ -9,6 +9,9 @@ try:
 except Exception:
     ZoneInfo = None
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+print("DATABASE_URL =", DATABASE_URL)
+
 
 APP_SECRET = "change_this_to_a_random_string"
 
