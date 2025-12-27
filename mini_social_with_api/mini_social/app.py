@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import os
 import sqlite3
 from sqlalchemy import text
-from mini_social_with_api.mini_social.db_sa import SessionLocal
+from db_sa import SessionLocal
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
